@@ -27,6 +27,11 @@ if [ -n "$AWS_S3_ENDPOINT" ]; then
   ENDPOINT_APPEND="--endpoint-url $AWS_S3_ENDPOINT"
 fi
 
+# Set AWS_ROLE_SESSION_NAME if not provided
+if [ -z "${AWS_ROLE_SESSION_NAME}" ]; then
+  AWS_ROLE_SESSION_NAME="s3-sync"
+fi
+
 # Create a dedicated profile for this action to avoid conflicts
 # with past/future actions.
 # https://github.com/jakejarvis/s3-sync-action/issues/1
@@ -36,6 +41,11 @@ ${AWS_SECRET_ACCESS_KEY}
 ${AWS_REGION}
 text
 EOF
+
+if [ -n "$AWS_ASSUME_ROLE_ARN" ]; then
+  echo "Assuming role: ${AWS_ASSUME_ROLE_ARN}"
+  sh -c "aws sts assume-role --role-arn ${AWS_ASSUME_ROLE_ARN} --role-session-name ${AWS_ROLE_SESSION_NAME}"
+fi
 
 # Sync using our dedicated profile and suppress verbose messages.
 # All other flags are optional via the `args:` directive.
