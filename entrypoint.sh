@@ -32,10 +32,12 @@ if [ -z "${AWS_ROLE_SESSION_NAME}" ]; then
   AWS_ROLE_SESSION_NAME="s3-sync"
 fi
 
+AWS_PROFILE=s3-sync-action
+
 # Create a dedicated profile for this action to avoid conflicts
 # with past/future actions.
 # https://github.com/jakejarvis/s3-sync-action/issues/1
-aws configure --profile s3-sync-action <<-EOF > /dev/null 2>&1
+aws configure --profile ${AWS_PROFILE} <<-EOF > /dev/null 2>&1
 ${AWS_ACCESS_KEY_ID}
 ${AWS_SECRET_ACCESS_KEY}
 ${AWS_REGION}
@@ -44,13 +46,19 @@ EOF
 
 if [ -n "$AWS_ASSUME_ROLE_ARN" ]; then
   echo "Assuming role: ${AWS_ASSUME_ROLE_ARN}"
-  sh -c "aws sts assume-role --role-arn ${AWS_ASSUME_ROLE_ARN} --role-session-name ${AWS_ROLE_SESSION_NAME}"
-fi
+
+  echo "[profile s3-sync-action-assume]" >> ~/.aws/config
+  echo "role_arn = ${AWS_ASSUME_ROLE_ARN}" >> ~/.aws/config
+  echo "source_profile = ${AWS_PROFILE}" >> ~/.aws/config
+  AWS_PROFILE=s3-sync-action-assume
+
+  cat ~/.aws/config
+ fi
 
 # Sync using our dedicated profile and suppress verbose messages.
 # All other flags are optional via the `args:` directive.
 sh -c "aws s3 sync ${SOURCE_DIR:-.} s3://${AWS_S3_BUCKET}/${DEST_DIR} \
-              --profile s3-sync-action \
+              --profile ${AWS_PROFILE} \
               --no-progress \
               ${ENDPOINT_APPEND} $*"
 
